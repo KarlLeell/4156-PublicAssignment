@@ -1,8 +1,12 @@
 package controllers;
 
+
+import com.google.gson.Gson;
 import io.javalin.Javalin;
 import java.io.IOException;
 import java.util.Queue;
+import models.GameBoard;
+import models.Player;
 import org.eclipse.jetty.websocket.api.Session;
 
 class PlayGame {
@@ -15,7 +19,7 @@ class PlayGame {
    * @param args Command line arguments
    */
   public static void main(final String[] args) {
-
+    
     app = Javalin.create(config -> {
       config.addStaticFiles("/public");
     }).start(PORT_NUMBER);
@@ -24,26 +28,46 @@ class PlayGame {
     app.post("/echo", ctx -> {
       ctx.result(ctx.body());
     });
+    
+    // Default info
+    app.get("/", ctx -> {
+      ctx.result("Please go to /newgame to start a game.");
+    });
 
-    /**
-     * Please add your end points here.
-     * 
-     * 
-     * 
-     * 
-     * Please add your end points here.
-     * 
-     * 
-     * 
-     * 
-     * Please add your end points here.
-     * 
-     * 
-     * 
-     * 
-     * Please add your end points here.
-     * 
-     */
+    GameBoard game = new GameBoard();
+    Gson gson = new Gson();
+    
+    // New game
+    app.get("/newgame", ctx -> {
+      ctx.redirect("tictactoe.html");
+      ctx.result("Redirect to tictactoe.html");
+    });
+    
+    // Player 1 to pick a chess piece and start the game
+    app.post("/startgame", ctx -> {
+      // Request body: "type=x"
+      char type = ctx.req.getParameter("type").toCharArray()[0];
+      game.setP1(new Player(type, 1));
+      ctx.json(gson.toJson(game));
+    });
+    
+    // Player 2 to join the game
+    app.get("/joingame", ctx -> {
+      game.setP2();
+      ctx.redirect("/tictactoe.html?p=2");
+      sendGameBoardToAllPlayers(gson.toJson(game));
+    });
+    
+    // Players make a move on the board
+    app.post("/move/:playerId", ctx -> {
+      int id = Integer.parseInt(ctx.pathParam("playerId"));
+      int x = Integer.parseInt(ctx.req.getParameter("x"));
+      int y = Integer.parseInt(ctx.req.getParameter("y"));
+      ctx.json(gson.toJson(game.makeMove(id, x, y)));
+      sendGameBoardToAllPlayers(gson.toJson(game));
+    });
+    
+    
 
     // Web sockets - DO NOT DELETE or CHANGE
     app.ws("/gameboard", new UiWebSocket());
